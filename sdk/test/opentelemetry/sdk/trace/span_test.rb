@@ -60,6 +60,12 @@ describe OpenTelemetry::SDK::Trace::Span do
       _(span.attributes).must_equal('foo' => 'bar')
     end
 
+    it 'ignores nil' do
+      span.set_attribute('foo', nil)
+      span.set_attribute('bar', 'baz')
+      _(span.attributes).must_equal('bar' => 'baz')
+    end
+
     it 'trims the oldest attribute' do
       span.set_attribute('old', 'oldbar')
       span.set_attribute('foo', 'bar')
