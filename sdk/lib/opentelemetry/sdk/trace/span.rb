@@ -67,16 +67,21 @@ module OpenTelemetry
         #
         # @return [self] returns itself
         def set_attribute(key, value)
-          super
-          @mutex.synchronize do
-            if @ended
-              OpenTelemetry.logger.warn('Calling set_attribute on an ended Span.')
-            else
-              @attributes ||= {}
-              @attributes[key] = value
-              trim_span_attributes(@attributes)
-              @total_recorded_attributes += 1
+          if value
+            super
+            @mutex.synchronize do
+              if @ended
+                OpenTelemetry.logger.warn('Calling set_attribute on an ended Span.')
+              else
+                @attributes ||= {}
+                @attributes[key] = value
+                trim_span_attributes(@attributes)
+                @total_recorded_attributes += 1
+              end
             end
+          else
+            OpenTelemetry.logger.debug("You called set_attribute with a nil value for a key: \"#{key}\"." \
+                                       " It will be ignored")
           end
           self
         end
