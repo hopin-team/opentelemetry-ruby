@@ -25,6 +25,13 @@ module OpenTelemetry
               ) do |span|
                 span.add_event('created_at', timestamp: msg['created_at'])
                 span.add_event('enqueued_at', timestamp: msg['enqueued_at'])
+
+                if msg['enqueued_at']
+                  enqueued_at = msg['enqueued_at']
+                  waiting_time = (Time.now.utc.to_f - enqueued_at) * 1000 # in ms
+                  span.set_attribute('waiting_time', waiting_time)
+                end
+
                 yield
               end
             end
