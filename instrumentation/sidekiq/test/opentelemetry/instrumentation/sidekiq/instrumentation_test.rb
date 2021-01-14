@@ -58,6 +58,7 @@ describe OpenTelemetry::Instrumentation::Sidekiq::Instrumentation do
       _(child_span.parent_span_id).must_equal root_span.span_id
       _(child_span.attributes['messaging.message_id']).must_equal job_id
       _(child_span.attributes['messaging.destination']).must_equal 'default'
+      _(child_span.attributes['waiting_time']).wont_be_nil
       _(child_span.events.size).must_equal(2)
       _(child_span.events[0].name).must_equal('created_at')
       _(child_span.events[1].name).must_equal('enqueued_at')
@@ -86,6 +87,24 @@ describe OpenTelemetry::Instrumentation::Sidekiq::Instrumentation do
       child_span3 = spans.find { |s| s.parent_span_id == child_span2.span_id }
       _(child_span3.name).must_equal 'SimpleJob'
       _(child_span3.kind).must_equal :consumer
+    end
+
+    it 'calculates waiting time' do
+      middleware = OpenTelemetry::Instrumentation::Sidekiq::Middlewares::Server::TracerMiddleware.new
+      job = {
+        'enqueued_at' => Time.now.utc.to_f - 10.333,
+        'jid' => '123',
+        'job_class' => 'SimpleJob',
+      }
+      worker = SimpleJob.new
+      queue = 'important'
+
+      middleware.call(worker, job, queue, &-> {})
+
+      # I don't want to install timecop for now, so let's just see if it's
+      # approximately OK
+      _(exporter.finished_spans[0].attributes['waiting_time']).must_be :>=, 10333
+      _(exporter.finished_spans[0].attributes['waiting_time']).must_be :<=, 10400
     end
   end
 end
