@@ -92,7 +92,6 @@ describe OpenTelemetry::Exporter::Jaeger::Encoder do
     _(encoded_span.tags.length).must_equal(0)
   end
 
-
   describe 'instrumentation library' do
     it 'encodes library and version when set' do
       lib = OpenTelemetry::SDK::InstrumentationLibrary.new('mylib', '0.1.0')
