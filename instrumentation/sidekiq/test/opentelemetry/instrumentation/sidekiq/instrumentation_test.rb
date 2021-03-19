@@ -21,6 +21,14 @@ class SimpleJob
   def perform; end
 end
 
+class ErroringOutJob
+  include Sidekiq::Worker
+
+  def perform
+    raise 'this is a serious error'
+  end
+end
+
 describe OpenTelemetry::Instrumentation::Sidekiq::Instrumentation do
   let(:instrumentation) { OpenTelemetry::Instrumentation::Sidekiq::Instrumentation.instance }
   let(:exporter) { EXPORTER }
@@ -92,6 +100,7 @@ describe OpenTelemetry::Instrumentation::Sidekiq::Instrumentation do
       _(child_span.attributes['messaging.destination']).must_equal 'default'
       _(child_span.attributes['messaging.destination_kind']).must_equal 'queue'
       _(child_span.attributes['peer.service']).must_be_nil
+      _(child_span.attributes['success']).must_equal 'true'
       _(child_span.events.size).must_equal(2)
       _(child_span.events[0].name).must_equal('created_at')
       _(child_span.events[1].name).must_equal('enqueued_at')
@@ -192,6 +201,23 @@ describe OpenTelemetry::Instrumentation::Sidekiq::Instrumentation do
 
         _(child_span.trace_id).must_equal root_span.trace_id
       end
+    end
+  end
+
+  describe 'job that errors out' do
+    it 'is properly marked as an error' do
+      ErroringOutJob.perform_async
+
+      begin
+        ErroringOutJob.drain
+      rescue StandardError => e
+        _(e.message).must_equal 'this is a serious error'
+      end
+
+      child_span = exporter.finished_spans.last
+      _(child_span.attributes['error.message']).must_equal 'this is a serious error'
+      _(child_span.attributes['error.backtrace'].nil?).must_equal false
+      _(child_span.attributes['success']).must_equal 'false'
     end
   end
 end
