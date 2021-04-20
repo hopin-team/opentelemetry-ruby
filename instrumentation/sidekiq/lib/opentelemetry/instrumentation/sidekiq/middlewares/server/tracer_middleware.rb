@@ -12,6 +12,7 @@ module OpenTelemetry
           # TracerMiddleware propagates context and instruments Sidekiq requests
           # by way of its middleware system
           class TracerMiddleware
+            # rubocop:disable Metrics/AbcSize, Metrics/MethodLength, Lint/RescueException
             def call(_worker, msg, _queue)
               parent_context = OpenTelemetry.propagation.extract(msg)
               tracer.in_span(
@@ -29,8 +30,18 @@ module OpenTelemetry
                 span.add_event('created_at', timestamp: msg['created_at'])
                 span.add_event('enqueued_at', timestamp: msg['enqueued_at'])
                 yield
+
+                span.set_attribute('success', 'true')
+              rescue Exception => e
+                span.set_attribute('error.message', e.message)
+                span.set_attribute('error.backtrace', e.backtrace.join("\n"))
+                span.set_attribute('success', 'false')
+                span.finish
+
+                raise
               end
             end
+            # rubocop:enable Metrics/AbcSize, Metrics/MethodLength, Lint/RescueException
 
             private
 
