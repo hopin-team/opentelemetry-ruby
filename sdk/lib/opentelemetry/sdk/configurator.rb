@@ -15,7 +15,7 @@ module OpenTelemetry
 
       private_constant :USE_MODE_UNSPECIFIED, :USE_MODE_ONE, :USE_MODE_ALL
 
-      attr_writer :logger, :propagators, :error_handler, :id_generator
+      attr_writer :logger, :propagators, :error_handler, :id_generator, :tracer_provider
 
       def initialize
         @instrumentation_names = []
